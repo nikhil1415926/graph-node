@@ -641,12 +641,15 @@ pub enum ColumnType {
     /// A user-defined enum. The string contains the name of the Postgres
     /// enum we created for it, fully qualified with the schema
     Enum(SqlName),
+    /// A `bytea` in SQL, represented as a ValueType::String; this is
+    /// used for `id` columns of type `Bytes`
+    BytesId,
 }
 
 impl From<IdType> for ColumnType {
     fn from(id_type: IdType) -> Self {
         match id_type {
-            IdType::Bytes => ColumnType::Bytes,
+            IdType::Bytes => ColumnType::BytesId,
             IdType::String => ColumnType::String,
         }
     }
@@ -697,6 +700,17 @@ impl ColumnType {
             ColumnType::String => "text",
             ColumnType::TSVector(_) => "tsvector",
             ColumnType::Enum(name) => name.as_str(),
+            ColumnType::BytesId => "bytea",
+        }
+    }
+
+    /// Return the `IdType` corresponding to this column type. This can only
+    /// be called on a column that stores an `ID` and will panic otherwise
+    pub(crate) fn id_type(&self) -> IdType {
+        match self {
+            ColumnType::String => IdType::String,
+            ColumnType::BytesId => IdType::Bytes,
+            _ => unreachable!("only String and Bytes are allowed as primary keys"),
         }
     }
 }
@@ -776,6 +790,10 @@ impl Column {
         named_type(&self.field_type) == "fulltext"
     }
 
+    pub fn is_primary_key(&self) -> bool {
+        self.name.as_str() == PRIMARY_KEY_COLUMN
+    }
+
     /// Return `true` if this column stores user-supplied text. Such
     /// columns may contain very large values and need to be handled
     /// specially for indexing
@@ -794,7 +812,7 @@ impl Column {
         if self.is_list() {
             write!(out, "[]")?;
         }
-        if self.name.0 == PRIMARY_KEY_COLUMN || !self.is_nullable() {
+        if self.is_primary_key() || !self.is_nullable() {
             write!(out, " not null")?;
         }
         Ok(())
@@ -876,6 +894,13 @@ impl Table {
             .iter()
             .find(|column| &column.field == field)
             .ok_or_else(|| StoreError::UnknownField(field.to_string()))
+    }
+
+    pub fn primary_key(&self) -> &Column {
+        self.columns
+            .iter()
+            .find(|column| column.is_primary_key())
+            .expect("every table has a primary key")
     }
 
     /// Generate the DDL for one table, i.e. one `create table` statement
