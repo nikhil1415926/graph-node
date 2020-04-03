@@ -47,7 +47,7 @@ where
                       kind
                       network
                       name
-                      source { address abi startBlock }
+                      source { address abi }
                       mapping {
                         kind
                         apiVersion
