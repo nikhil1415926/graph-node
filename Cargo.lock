@@ -1400,13 +1400,11 @@ name = "graph-server-index-node"
 version = "0.18.0"
 dependencies = [
  "failure",
- "futures 0.1.29",
  "graph",
  "graph-graphql",
  "graphql-parser",
  "http 0.2.1",
  "hyper 0.13.4",
- "lazy_static",
  "serde",
 ]
 
