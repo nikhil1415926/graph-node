@@ -356,6 +356,8 @@ impl Connection {
                 let graft = metadata::deployment_graft(&self.conn, &self.storage.subgraph())?;
                 match &*self.storage {
                     Storage::Relational(layout) => {
+                        // See if this subgraph is grafted, and copy data from
+                        // the graft base if it is
                         let start = Instant::now();
                         let graft =
                             metadata::deployment_graft(&self.conn, &self.storage.subgraph())?;
@@ -374,6 +376,18 @@ impl Connection {
                                 self.metadata_layout(),
                             )?;
                         }
+                        // Create indexes for our tables
+                        let index_start = Instant::now();
+                        let sql = layout.create_indexes_sql().map_err(|_| {
+                            StoreError::Unknown(format_err!(
+                                "failed to generate DDL to create indexes"
+                            ))
+                        })?;
+                        self.conn.batch_execute(&sql)?;
+                        info!(logger, "Created indexes";
+                              "time_ms" => index_start.elapsed().as_millis());
+
+                        // Mark the subgraph ready
                         diesel::update(dsl::table)
                             .set(dsl::state.eq(State::Ready))
                             .filter(dsl::subgraph.eq(self.storage.subgraph().as_str()))
