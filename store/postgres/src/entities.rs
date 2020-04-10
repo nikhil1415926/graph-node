@@ -383,7 +383,14 @@ impl Connection {
                                 "failed to generate DDL to create indexes"
                             ))
                         })?;
-                        self.conn.batch_execute(&sql)?;
+                        for stmt in sql.split(";\n").map(|s| s.trim()).filter(|s| !s.is_empty()) {
+                            let stmt_start = Instant::now();
+                            self.conn.batch_execute(&stmt)?;
+                            info!(logger, "Created index";
+                                   "stmt" => stmt,
+                                    "time_ms" => stmt_start.elapsed().as_millis());
+                        }
+
                         info!(logger, "Created indexes";
                               "time_ms" => index_start.elapsed().as_millis());
 
