@@ -1103,7 +1103,6 @@ impl JsonStorage {
             | ValueType::BigInt
             | ValueType::Bytes
             | ValueType::BigDecimal
-            | ValueType::ID
             | ValueType::Int
             | ValueType::String => (String::from("btree"), String::from(""), "->>"),
             ValueType::List => (String::from("gin"), String::from("jsonb_path_ops"), "->"),
