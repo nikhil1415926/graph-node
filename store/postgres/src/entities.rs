@@ -53,7 +53,7 @@ use crate::block_range::block_number;
 use crate::history_event::HistoryEvent;
 use crate::jsonb_queries::FilterQuery;
 use crate::notification_listener::JsonNotification;
-use crate::relational::{IdType, Layout};
+use crate::relational::Layout;
 use crate::store::Store;
 
 lazy_static! {
@@ -1291,12 +1291,7 @@ impl Storage {
             }
             V::Relational => {
                 let subgraph_schema = store.input_schema(subgraph)?;
-                let layout = Layout::new(
-                    &subgraph_schema.document,
-                    IdType::String,
-                    subgraph.clone(),
-                    schema.name,
-                )?;
+                let layout = Layout::new(&subgraph_schema.document, subgraph.clone(), schema.name)?;
                 Storage::Relational(layout)
             }
         };
