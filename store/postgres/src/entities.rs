@@ -792,13 +792,9 @@ impl Connection {
         self.conn.batch_execute(&*query)?;
 
         match *GRAPH_STORAGE_SCHEME {
-            v::Relational => Layout::create_relational_schema(
-                &self.conn,
-                &schema_name,
-                schema.id.clone(),
-                &schema.document,
-            )
-            .map(|_| ()),
+            v::Relational => {
+                Layout::create_relational_schema(&self.conn, schema, schema_name).map(|_| ())
+            }
             v::Split => create_split_schema(&self.conn, &schema_name),
         }
     }
@@ -1291,7 +1287,7 @@ impl Storage {
             }
             V::Relational => {
                 let subgraph_schema = store.input_schema(subgraph)?;
-                let layout = Layout::new(&subgraph_schema.document, subgraph.clone(), schema.name)?;
+                let layout = Layout::new(subgraph_schema.as_ref(), &schema.name)?;
                 Storage::Relational(layout)
             }
         };
