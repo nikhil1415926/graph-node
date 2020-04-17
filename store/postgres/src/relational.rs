@@ -23,7 +23,7 @@ use crate::relational_queries::{
     DeleteQuery, EntityData, FilterCollection, FilterQuery, FindManyQuery, FindQuery, InsertQuery,
     RevertClampQuery, RevertRemoveQuery, UpdateQuery,
 };
-use graph::data::graphql::ext::ObjectTypeExt;
+use graph::data::graphql::ext::{DocumentExt, ObjectTypeExt};
 use graph::data::schema::{FulltextConfig, FulltextDefinition, Schema, SCHEMA_TYPE_NAME};
 use graph::prelude::{
     format_err, info, BlockNumber, Entity, EntityChange, EntityChangeOperation, EntityCollection,
@@ -179,23 +179,13 @@ impl Layout {
     /// GraphQL schema `schema`. The name of the database schema in which
     /// the subgraph's tables live is in `schema`.
     pub fn new(schema: &Schema, schema_name: &str) -> Result<Layout, StoreError> {
-        use s::Definition::*;
-        use s::TypeDefinition::*;
-
         SqlName::check_valid_identifier(schema_name, "database schema")?;
 
         // Extract enum types
         let enums: EnumMap = schema
             .document
-            .definitions
+            .get_enum_definitions()
             .iter()
-            .filter_map(|defn| {
-                if let TypeDefinition(Enum(enum_type)) = defn {
-                    Some(enum_type)
-                } else {
-                    None
-                }
-            })
             .map(|enum_type| -> Result<(String, Vec<String>), StoreError> {
                 SqlName::check_valid_identifier(&enum_type.name, "enum")?;
                 Ok((
@@ -212,15 +202,8 @@ impl Layout {
         // List of all object types that are not __SCHEMA__
         let object_types = schema
             .document
-            .definitions
-            .iter()
-            .filter_map(|defn| {
-                if let TypeDefinition(Object(obj_type)) = defn {
-                    Some(obj_type)
-                } else {
-                    None
-                }
-            })
+            .get_object_type_definitions()
+            .into_iter()
             .filter(|obj_type| obj_type.name != SCHEMA_TYPE_NAME)
             .collect::<Vec<_>>();
 
